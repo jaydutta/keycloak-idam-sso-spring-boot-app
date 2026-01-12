@@ -1,0 +1,55 @@
+server:
+  port: 8092 #8083
+
+spring:
+  application:
+    name: file-upload-app
+  
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: file-upload-client
+            client-secret: 5EddZK1rCYFjOOPZKrAW4WsGmtbWQ2c7
+            scope: openid,profile,email,roles
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+#            redirect-uri: "{baseUrl}/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8081/realms/multi-app-realm
+#            authorization-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/auth
+#            token-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/token
+#            user-info-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/userinfo
+#            jwk-set-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/certs
+            user-name-attribute: preferred_username
+
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/multi-app-realm
+          jwk-set-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/certs
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+keycloak:
+  auth-server-url: http://localhost:8081
+  realm: multi-app-realm
+  resource: file-upload-client
+
+app:
+  frontend-url: http://localhost:3002
+  landing-page-url: http://localhost:3000
+  upload:
+    dir: ./uploads
+
+logging:
+  level:
+    root: INFO
+    com.company.landing: DEBUG
+    org.keycloak: DEBUG    
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: TRACE

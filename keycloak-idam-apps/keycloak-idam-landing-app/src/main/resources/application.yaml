@@ -1,0 +1,54 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: landing-page-app
+  
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: landing-page-client
+            client-secret: ow5JrcBTLbdJ7MlGApZ2koqDuduBXTaj
+            scope: openid,profile,email,roles
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8081/realms/multi-app-realm
+            authorization-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/auth
+            token-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/token
+            user-info-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/userinfo
+            jwk-set-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/certs
+            user-name-attribute: preferred_username
+      
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8081/realms/multi-app-realm
+          jwk-set-uri: http://localhost:8081/realms/multi-app-realm/protocol/openid-connect/certs
+
+keycloak:
+  auth-server-url: http://localhost:8081
+  realm: multi-app-realm
+  resource: landing-page-client
+  credentials:
+    secret: ow5JrcBTLbdJ7MlGApZ2koqDuduBXTaj
+  admin:
+    username: admin
+    password: admin
+    client-id: admin-cli
+
+app:
+  frontend-url: http://localhost:3000
+  report-app-url: http://localhost:3001
+  file-app-url: http://localhost:3002
+  
+logging:
+  level:
+    root: INFO
+    com.company.landing: DEBUG
+    org.keycloak: DEBUG    
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: TRACE

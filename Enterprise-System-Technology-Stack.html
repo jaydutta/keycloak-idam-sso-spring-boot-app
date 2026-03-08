@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enterprise System Technology Stack</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Orbitron:wght@700;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:#07071a;font-family:'Nunito',sans-serif;}
+#sfcanvas{position:fixed;inset:0;z-index:0;pointer-events:none;}
+.page-wrap{position:relative;width:1160px;margin:0 auto;padding-bottom:40px;z-index:1;}
+.header{text-align:center;padding:22px 0 10px;}
+.header h1{font-family:'Orbitron',sans-serif;font-size:30px;font-weight:900;letter-spacing:1px;}
+.header h1 .w{color:#f0f0ff;}.header h1 .g{color:#f5a623;}
+.header .sub{font-size:10px;color:rgba(255,255,255,.3);letter-spacing:3px;text-transform:uppercase;margin-top:5px;}
+#map{position:relative;width:1160px;height:1200px;}
+svg#lines{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;overflow:visible;}
+canvas#pcv{position:absolute;inset:0;z-index:2;pointer-events:none;}
+
+.node{
+  position:absolute;transform:translate(-50%,-50%);
+  cursor:pointer;white-space:nowrap;user-select:none;
+}
+/* Category nodes */
+.cat-node{
+  z-index:6;border-radius:10px;padding:7px 14px;
+  font-size:11px;font-weight:800;color:#fff;line-height:1.35;text-align:center;
+  box-shadow:0 0 18px var(--glow),0 3px 10px rgba(0,0,0,.5);
+  border:1.5px solid rgba(255,255,255,.22);
+  animation:catPulse 3s ease-in-out infinite;animation-delay:var(--dl,0s);
+  transition:box-shadow .2s,transform .2s;
+}
+.cat-node:hover{transform:translate(-50%,-50%) scale(1.09);z-index:30;box-shadow:0 0 38px var(--glow),0 6px 18px rgba(0,0,0,.6);}
+@keyframes catPulse{
+  0%,100%{box-shadow:0 0 18px var(--glow),0 3px 10px rgba(0,0,0,.5);}
+  50%{box-shadow:0 0 32px var(--glow),0 3px 10px rgba(0,0,0,.5);}
+}
+/* Tech chips */
+.chip-node{
+  z-index:4;border-radius:7px;padding:4px 10px;
+  font-size:10px;font-weight:700;color:#111827;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+  animation:chipFloat 4s ease-in-out infinite;animation-delay:var(--dl,0s);
+  transition:transform .15s;
+}
+.chip-node:hover{transform:translate(-50%,-50%) scale(1.15);z-index:30;}
+@keyframes chipFloat{
+  0%,100%{transform:translate(-50%,-50%) translateY(0);}
+  50%{transform:translate(-50%,-50%) translateY(-4px);}
+}
+/* API chain */
+.api-node{
+  z-index:7;border-radius:8px;padding:5px 13px;
+  font-size:10.5px;font-weight:800;color:#111827;
+  box-shadow:0 0 14px #f5a62388,0 2px 8px rgba(0,0,0,.4);
+  border:1.5px solid rgba(245,166,35,.4);
+  animation:chipFloat 4s ease-in-out infinite;animation-delay:var(--dl,0s);
+  transition:transform .15s;
+}
+.api-node:hover{transform:translate(-50%,-50%) scale(1.12);z-index:30;}
+.api-arrow-el{
+  position:absolute;transform:translate(-50%,-50%);
+  z-index:7;font-size:15px;color:#ffe066;font-weight:900;
+  animation:arrBounce 1s ease-in-out infinite;animation-delay:var(--dl,0s);
+  pointer-events:none;text-shadow:0 0 8px #f5a623;
+}
+@keyframes arrBounce{0%,100%{opacity:.4;transform:translate(-50%,-50%) translateY(0);}50%{opacity:1;transform:translate(-50%,-50%) translateY(3px);}}
+
+/* ── GEAR HUB ── */
+.gear-hub-wrap{
+  position:absolute;z-index:8;transform:translate(-50%,-50%);
+  width:380px;height:380px;
+}
+#gearCanvas{display:block;}
+
+.legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;padding:12px 20px;position:relative;z-index:10;}
+.li{display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(255,255,255,.55);font-weight:700;}
+.ld{width:10px;height:10px;border-radius:3px;}
+</style>
+</head>
+<body>
+<canvas id="sfcanvas"></canvas>
+<div class="page-wrap">
+  <div class="header">
+    <h1><span class="w">Enterprise System </span><span class="g">Technology Stack</span></h1>
+    <div class="sub">Observability Stack &nbsp;·&nbsp; Distributed Systems Architecture &nbsp;·&nbsp; API Chain: REST → gRPC → GraphQL → WebSockets</div>
+  </div>
+  <div id="map">
+    <canvas id="pcv"></canvas>
+    <svg id="lines"><defs id="svgDefs"></defs></svg>
+
+    <!-- GEAR HUB: Four Pillars of System Design -->
+    <div class="gear-hub-wrap" id="pillarsHub" style="left:580px;top:600px;">
+      <canvas id="gearCanvas" width="380" height="380"></canvas>
+    </div>
+  </div>
+  <div class="legend" id="legend"></div>
+</div>
+
+<script>
+const MW = 1160, MH = 1200;
+const CX = 580, CY = 600;
+
+// ── CATEGORIES ──
+const CATS = [
+  {id:'cloud',   label:'Cloud\nPlatforms',              bg:'#9333ea',glow:'#d946ef', angle:195, dist:230},
+  {id:'storage', label:'Storage & File\nSystems',       bg:'#0891b2',glow:'#22d3ee', angle:305, dist:240},
+  {id:'lb',      label:'Load\nBalancing',                bg:'#db2777',glow:'#f472b6', angle:345, dist:225},
+  {id:'cache',   label:'Caching',                       bg:'#ea580c',glow:'#fb923c', angle:33,  dist:235},
+  {id:'sql',     label:'Databases\n(SQL)',               bg:'#16a34a',glow:'#4ade80', angle:62,  dist:250},
+  {id:'nosql',   label:'Databases\n(NoSQL)',             bg:'#4f46e5',glow:'#818cf8', angle:100, dist:245},
+  {id:'mq',      label:'Message Queues\n& Streaming',    bg:'#e11d48',glow:'#fb7185', angle:133, dist:245},
+  {id:'api',     label:'API & Service\nCommunication',   bg:'#b45309',glow:'#fbbf24', angle:162, dist:225},
+  {id:'micro',   label:'Microservices &\nOrchestration', bg:'#0e7490',glow:'#67e8f9', angle:176, dist:255},
+  {id:'monitor', label:'Monitoring &\nLogging',          bg:'#7c3aed',glow:'#c084fc', angle:228, dist:225},
+  {id:'cdn',     label:'CDN & Edge\nComputing',          bg:'#0369a1',glow:'#38bdf8', angle:255, dist:225},
+  {id:'dist',    label:'Distributed Systems\nAlgorithms',bg:'#92400e',glow:'#fcd34d', angle:278, dist:205},
+  // NEW OBSERVABILITY CATEGORY
+  {id:'obs',     label:'Observability\nStack',           bg:'#059669',glow:'#34d399', angle:14,  dist:260},
+];
+
+// ── CHIPS ──
+const CHIPS = [
+  // Cloud
+  {name:'DigitalOcean',   cat:'cloud',  icon:'🌊',c:'#bfdbfe',a:220,d:145},
+  {name:'Google Cloud',   cat:'cloud',  icon:'☁️',c:'#dbeafe',a:200,d:162},
+  {name:'Azure',          cat:'cloud',  icon:'🔷',c:'#eff6ff',a:180,d:152},
+  {name:'AWS',            cat:'cloud',  icon:'⚡',c:'#fef3c7',a:240,d:135},
+  // Storage
+  {name:'Ceph',           cat:'storage',icon:'🗄',c:'#cffafe',a:285,d:145},
+  {name:'HDFS',           cat:'storage',icon:'📁',c:'#e0f2fe',a:310,d:155},
+  {name:'MinIO',          cat:'storage',icon:'💾',c:'#f0fdfa',a:338,d:138},
+  {name:'Amazon S3',      cat:'storage',icon:'🪣',c:'#fef9c3',a:262,d:148},
+  // LB
+  {name:'Traefik',        cat:'lb',     icon:'🔀',c:'#fce7f3',a:348,d:158},
+  {name:'Envoy',          cat:'lb',     icon:'✉️',c:'#fdf2f8',a:18, d:148},
+  {name:'HAProxy',        cat:'lb',     icon:'⚖️',c:'#fff7ed',a:0,  d:158},
+  {name:'Nginx',          cat:'lb',     icon:'🌐',c:'#f0fdf4',a:328,d:142},
+  // Cache
+  {name:'Fastly',         cat:'cache',  icon:'⚡',c:'#fef3c7',a:8,  d:152},
+  {name:'Cloudflare Cache',cat:'cache', icon:'🟠',c:'#fff7ed',a:38, d:148},
+  {name:'Memcached',      cat:'cache',  icon:'🔵',c:'#eff6ff',a:58, d:152},
+  {name:'Redis',          cat:'cache',  icon:'🔴',c:'#fff1f2',a:348,d:138},
+  // SQL
+  {name:'MySQL',          cat:'sql',    icon:'🐬',c:'#f0fdf4',a:38, d:158},
+  {name:'CockroachDB',    cat:'sql',    icon:'🪳',c:'#f9fafb',a:62, d:148},
+  {name:'PostgreSQL',     cat:'sql',    icon:'🐘',c:'#dbeafe',a:84, d:158},
+  {name:'MariaDB',        cat:'sql',    icon:'🏪',c:'#fdf4ff',a:15, d:142},
+  // NoSQL
+  {name:'MongoDB',        cat:'nosql',  icon:'🍃',c:'#f0fdf4',a:75, d:158},
+  {name:'Cassandra',      cat:'nosql',  icon:'🌿',c:'#ecfdf5',a:100,d:152},
+  {name:'DynamoDB',       cat:'nosql',  icon:'⚡',c:'#fef3c7',a:120,d:148},
+  {name:'Couchbase',      cat:'nosql',  icon:'🛋',c:'#fff7ed',a:54, d:142},
+  // MQ
+  {name:'Kafka',          cat:'mq',     icon:'📨',c:'#fef3c7',a:110,d:152},
+  {name:'RabbitMQ',       cat:'mq',     icon:'🐇',c:'#fce7f3',a:133,d:158},
+  {name:'Amazon SQS',     cat:'mq',     icon:'📡',c:'#e0f2fe',a:153,d:148},
+  {name:'Google Pub/Sub', cat:'mq',     icon:'📢',c:'#f0fdf4',a:88, d:142},
+  // Micro
+  {name:'Kubernetes',     cat:'micro',  icon:'☸️',c:'#dbeafe',a:170,d:162},
+  {name:'Docker',         cat:'micro',  icon:'🐳',c:'#e0f2fe',a:194,d:158},
+  {name:'Istio',          cat:'micro',  icon:'⛵',c:'#f0fdfa',a:150,d:148},
+  {name:'Linkerd',        cat:'micro',  icon:'🔗',c:'#f5f3ff',a:210,d:142},
+  // Monitor
+  {name:'Prometheus',     cat:'monitor',icon:'🔥',c:'#fff1f2',a:222,d:158},
+  {name:'Loki',           cat:'monitor',icon:'📊',c:'#f0fdf4',a:248,d:148},
+  {name:'ELK Stack',      cat:'monitor',icon:'📦',c:'#fef9c3',a:204,d:152},
+  {name:'Grafana',        cat:'monitor',icon:'📈',c:'#fdf4ff',a:268,d:142},
+  // CDN
+  {name:'Cloudflare',     cat:'cdn',    icon:'☁️',c:'#fff7ed',a:236,d:158},
+  {name:'Akamai',         cat:'cdn',    icon:'⚡',c:'#fef3c7',a:260,d:148},
+  {name:'AWS CloudFront', cat:'cdn',    icon:'🟠',c:'#fff7ed',a:278,d:152},
+  {name:'Fastly CDN',     cat:'cdn',    icon:'🔴',c:'#fff1f2',a:216,d:142},
+  // Dist
+  {name:'Gossip Protocol',cat:'dist',   icon:'🔄',c:'#f5f3ff',a:262,d:158},
+  {name:'Paxos',          cat:'dist',   icon:'📜',c:'#eff6ff',a:287,d:152},
+  {name:'Raft',           cat:'dist',   icon:'⛵',c:'#f0fdfa',a:308,d:148},
+  {name:'Consistent Hashing',cat:'dist',icon:'🔢',c:'#fef9c3',a:244,d:158},
+  // ── OBSERVABILITY STACK ──
+  {name:'OpenTelemetry',  cat:'obs',    icon:'🔭',c:'#d1fae5',a:350,d:162},
+  {name:'Jaeger',         cat:'obs',    icon:'🔍',c:'#a7f3d0',a:10, d:152},
+  {name:'Zipkin',         cat:'obs',    icon:'📍',c:'#6ee7b7',a:30, d:162},
+  {name:'Datadog',        cat:'obs',    icon:'🐶',c:'#bbf7d0',a:50, d:155},
+  {name:'New Relic',      cat:'obs',    icon:'🌐',c:'#d1fae5',a:330,d:148},
+  {name:'Dynatrace',      cat:'obs',    icon:'⚡',c:'#a7f3d0',a:310,d:158},
+];
+
+const API_CHAIN = [
+  {name:'REST',       icon:'🔗',c:'#bfdbfe',desc:'Stateless HTTP'},
+  {name:'gRPC',       icon:'⚡',c:'#fef3c7',desc:'High-Perf RPC'},
+  {name:'GraphQL',    icon:'◈', c:'#fce7f3',desc:'Flexible Queries'},
+  {name:'WebSockets', icon:'🔌',c:'#d1fae5',desc:'Real-time Duplex'},
+];
+
+const deg = a => a * Math.PI / 180;
+function polar(cx,cy,a,d){ return {x:cx+Math.cos(deg(a))*d, y:cy+Math.sin(deg(a))*d}; }
+
+const map    = document.getElementById('map');
+const svgEl  = document.getElementById('lines');
+const pcv    = document.getElementById('pcv');
+const pCtx   = pcv.getContext('2d');
+pcv.width = MW; pcv.height = MH;
+
+// ── BUILD CATEGORY NODES ──
+const catEls = {};
+CATS.forEach((c,i)=>{
+  const pos = polar(CX,CY,c.angle,c.dist);
+  const el = document.createElement('div');
+  el.className = 'node cat-node'; el.id='cat-'+c.id;
+  el.style.cssText=`left:${pos.x}px;top:${pos.y}px;background:${c.bg};--glow:${c.glow};--dl:${i*0.2}s;`;
+  el.innerHTML=c.label.replace('\n','<br>');
+  map.appendChild(el);
+  catEls[c.id]={el,data:c,x:pos.x,y:pos.y};
+});
+
+// ── BUILD TECH CHIPS ──
+const chipEls=[];
+CHIPS.forEach((ch,i)=>{
+  const cat=catEls[ch.cat];
+  const pos=polar(cat.x,cat.y,ch.a,ch.d);
+  const el=document.createElement('div');
+  el.className='node chip-node';
+  el.style.cssText=`left:${pos.x}px;top:${pos.y}px;background:${ch.c};--dl:${i*0.045}s;`;
+  el.textContent=ch.icon+' '+ch.name;
+  map.appendChild(el);
+  chipEls.push({el,data:ch,x:pos.x,y:pos.y,catId:ch.cat});
+});
+
+// ── BUILD API CHAIN ──
+const apiCat=catEls['api'];
+const apiChipEls=[];
+API_CHAIN.forEach((item,i)=>{
+  const el=document.createElement('div');
+  el.className='node api-node'; el.id='apiChip'+i;
+  el.style.cssText=`left:${apiCat.x-28}px;top:${apiCat.y+58+i*44}px;background:${item.c};--dl:${i*0.18}s;`;
+  el.innerHTML=`${item.icon} <strong>${item.name}</strong> <span style="font-size:8.5px;opacity:.6;">${item.desc}</span>`;
+  map.appendChild(el);
+  apiChipEls.push({el,item,x:apiCat.x-28,y:apiCat.y+58+i*44});
+});
+const apiArrows=[];
+for(let i=0;i<API_CHAIN.length-1;i++){
+  const el=document.createElement('div');
+  el.className='api-arrow-el';
+  el.style.cssText=`left:${apiCat.x-28}px;top:${apiCat.y+80+i*44}px;--dl:${i*0.2}s;`;
+  el.textContent='↓'; map.appendChild(el); apiArrows.push(el);
+}
+
+// ── COLLISION RESOLUTION ──
+function resolveCollisions(){
+  const all=[];
+  CATS.forEach(c=>{ const r=catEls[c.id]; all.push({el:r.el,x:r.x,y:r.y,isCat:true,catId:c.id}); });
+  chipEls.forEach(ce=>all.push({el:ce.el,x:ce.x,y:ce.y,isCat:false,catId:ce.catId}));
+  apiChipEls.forEach(a=>all.push({el:a.el,x:a.x,y:a.y,isCat:false,catId:'api',isApi:true}));
+
+  // Also keep pillars hub as a fixed obstacle
+  const hub=document.getElementById('pillarsHub');
+  const FIXED=[{x:CX,y:CY,w:395,h:395,fixed:true}];
+
+  const MARGIN=9, ITERS=100, EDGE=16;
+
+  for(let iter=0;iter<ITERS;iter++){
+    let moved=false;
+    for(let i=0;i<all.length;i++){
+      for(let j=i+1;j<all.length;j++){
+        const a=all[i],b=all[j];
+        const aw=a.el.offsetWidth,ah=a.el.offsetHeight;
+        const bw=b.el.offsetWidth,bh=b.el.offsetHeight;
+        const ox=Math.min(a.x+aw/2,b.x+bw/2)-Math.max(a.x-aw/2,b.x-bw/2)+MARGIN;
+        const oy=Math.min(a.y+ah/2,b.y+bh/2)-Math.max(a.y-ah/2,b.y-bh/2)+MARGIN;
+        if(ox>0&&oy>0){
+          moved=true;
+          const wA=b.isCat?0.2:0.5, wB=a.isCat?0.2:0.5;
+          if(ox<oy){
+            const push=(ox/2)*(b.x>a.x?1:-1);
+            a.x-=push*wA; b.x+=push*wB;
+          } else {
+            const push=(oy/2)*(b.y>a.y?1:-1);
+            a.y-=push*wA; b.y+=push*wB;
+          }
+        }
+      }
+      // Avoid central hub
+      FIXED.forEach(f=>{
+        const n=all[i];
+        const nw=n.el.offsetWidth,nh=n.el.offsetHeight;
+        const ox=Math.min(n.x+nw/2,f.x+f.w/2)-Math.max(n.x-nw/2,f.x-f.w/2)+MARGIN;
+        const oy=Math.min(n.y+nh/2,f.y+f.h/2)-Math.max(n.y-nh/2,f.y-f.h/2)+MARGIN;
+        if(ox>0&&oy>0){
+          if(ox<oy){ n.x+=(n.x<f.x?-1:1)*ox; } else { n.y+=(n.y<f.y?-1:1)*oy; }
+        }
+      });
+      // Boundary clamp
+      const n=all[i],nw=n.el.offsetWidth,nh=n.el.offsetHeight;
+      n.x=Math.max(nw/2+EDGE,Math.min(MW-nw/2-EDGE,n.x));
+      n.y=Math.max(nh/2+EDGE,Math.min(MH-nh/2-EDGE,n.y));
+    }
+    if(!moved)break;
+  }
+
+  all.forEach(n=>{
+    n.el.style.left=n.x+'px'; n.el.style.top=n.y+'px';
+    if(n.isCat) catEls[n.catId]={...catEls[n.catId],x:n.x,y:n.y};
+  });
+  let ai=0;
+  all.forEach(n=>{if(n.isApi){apiChipEls[ai].x=n.x;apiChipEls[ai].y=n.y;ai++;}});
+
+  apiArrows.forEach((arr,i)=>{
+    if(apiChipEls[i]&&apiChipEls[i+1]){
+      arr.style.left=((apiChipEls[i].x+apiChipEls[i+1].x)/2)+'px';
+      arr.style.top=((apiChipEls[i].y+apiChipEls[i+1].y)/2)+'px';
+    }
+  });
+}
+
+// ── SVG LINES with ARROWS ──
+let lineData=[];
+
+function elC(el){return {x:parseFloat(el.style.left),y:parseFloat(el.style.top)};}
+
+function buildLines(){
+  Array.from(svgEl.children).forEach(c=>{if(c.id!=='svgDefs')c.remove();});
+  const defs=document.getElementById('svgDefs');
+  defs.innerHTML='';
+  lineData=[];
+
+  const cache={};
+  // arrowFill: the arrow triangle color, separate from line color
+  function marker(id,fill,size){
+    if(cache[id])return cache[id];
+    const sz=size||6;
+    const m=document.createElementNS('http://www.w3.org/2000/svg','marker');
+    m.setAttribute('id',id); m.setAttribute('markerWidth',sz);
+    m.setAttribute('markerHeight',sz); m.setAttribute('refX',sz-1);
+    m.setAttribute('refY',sz/2); m.setAttribute('orient','auto');
+    const p=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    p.setAttribute('points',`0 0, ${sz} ${sz/2}, 0 ${sz}`);
+    p.setAttribute('fill',fill);
+    m.appendChild(p); defs.appendChild(m);
+    cache[id]=id; return id;
+  }
+
+  // Arrow colors: always bright white for cat lines, bright yellow for chip lines, hot gold for API chain
+  const CAT_ARROW  = '#ffffff';   // white — highly visible on dark bg
+  const CHIP_ARROW = '#facc15';   // yellow — visible on all chip colors
+  const API_ARROW  = '#ff6b35';   // orange-red — vivid for chain flow
+
+  const gc={x:CX,y:CY};
+
+  CATS.forEach(c=>{
+    const cc=elC(catEls[c.id].el);
+    // slightly offset control point
+    const qx=(gc.x+cc.x)/2+(cc.y<gc.y?-35:35);
+    const qy=(gc.y+cc.y)/2+(cc.x<gc.x?10:-10);
+
+    const mIdCat=marker('mc_'+c.id, CAT_ARROW, 8);
+    addPath(gc.x,gc.y,cc.x,cc.y,qx,qy,c.glow,2.5,0.6,mIdCat);
+    lineData.push({x1:gc.x,y1:gc.y,x2:cc.x,y2:cc.y,mx:qx,my:qy,color:c.glow,curved:true});
+
+    chipEls.forEach(ce=>{
+      if(ce.data.cat!==c.id)return;
+      const ep=elC(ce.el);
+      const mIdChip=marker('mch_'+c.id, CHIP_ARROW, 6);
+      addLine(cc.x,cc.y,ep.x,ep.y,c.glow,1.4,0.4,mIdChip);
+      lineData.push({x1:cc.x,y1:cc.y,x2:ep.x,y2:ep.y,color:c.glow});
+    });
+  });
+
+  // API chain
+  const ap=elC(catEls['api'].el);
+  let prev=ap;
+  const mIdApi=marker('mapi', API_ARROW, 9);
+  apiChipEls.forEach((ace,i)=>{
+    const ep={x:ace.x,y:ace.y};
+    const qx=(prev.x+ep.x)/2+(i%2===0?-22:22);
+    const qy=(prev.y+ep.y)/2;
+    addPath(prev.x,prev.y,ep.x,ep.y,qx,qy,'#f5a623',i===0?2.5:2,0.8,mIdApi);
+    lineData.push({x1:prev.x,y1:prev.y,x2:ep.x,y2:ep.y,mx:qx,my:qy,color:'#f5a623',curved:true,chain:true});
+    prev=ep;
+  });
+
+  // Observability internal flow: OTel → Jaeger, OTel → Zipkin, OTel → Datadog
+  const obsCat=catEls['obs'];
+  const occ=elC(obsCat.el);
+  const obsChips=chipEls.filter(c=>c.catId==='obs');
+  const mObs=marker('mobs','#34d399',7);
+  obsChips.forEach((ce,i)=>{
+    const ep=elC(ce.el);
+    addLine(occ.x,occ.y,ep.x,ep.y,'#34d399',1.4,0.45,mObs);
+    lineData.push({x1:occ.x,y1:occ.y,x2:ep.x,y2:ep.y,color:'#34d399'});
+    // Also draw flow between first 3 obs chips
+    if(i<obsChips.length-1){
+      const next=obsChips[i+1];
+      const np=elC(next.el);
+      addLine(ep.x,ep.y,np.x,np.y,'#10b981',1,0.3,mObs);
+    }
+  });
+}
+
+function addPath(x1,y1,x2,y2,qx,qy,color,w,opacity,mid){
+  const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('d',`M${x1},${y1} Q${qx},${qy} ${x2},${y2}`);
+  p.setAttribute('stroke',color);p.setAttribute('stroke-width',w);
+  p.setAttribute('fill','none');p.setAttribute('opacity',opacity);
+  p.setAttribute('stroke-dasharray','7 5');
+  if(mid)p.setAttribute('marker-end',`url(#${mid})`);
+  p.style.animation=`dashFlow ${1.4+Math.random()*.8}s linear infinite`;
+  svgEl.appendChild(p);
+}
+function addLine(x1,y1,x2,y2,color,w,opacity,mid){
+  const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+  l.setAttribute('stroke',color);l.setAttribute('stroke-width',w);l.setAttribute('opacity',opacity);
+  l.setAttribute('stroke-dasharray','5 4');
+  if(mid)l.setAttribute('marker-end',`url(#${mid})`);
+  l.style.animation=`dashFlow ${1.5+Math.random()}s linear infinite`;
+  svgEl.appendChild(l);
+}
+
+// ── PARTICLES ──
+let particles=[];
+function spawnParticles(){
+  lineData.forEach(ld=>{
+    if(Math.random()>.26)return;
+    particles.push({
+      x:ld.x1,y:ld.y1,tx:ld.x2,ty:ld.y2,
+      mx:ld.mx||(ld.x1+ld.x2)/2, my:ld.my||(ld.y1+ld.y2)/2,
+      t:0,speed:.004+Math.random()*.006,
+      color:ld.color,r:ld.chain?4.5:2.5,chain:!!ld.chain,curved:!!ld.curved
+    });
+  });
+}
+function qBez(x1,y1,mx,my,x2,y2,t){
+  const mt=1-t;
+  return {x:mt*mt*x1+2*mt*t*mx+t*t*x2, y:mt*mt*y1+2*mt*t*my+t*t*y2};
+}
+function animParticles(){
+  pCtx.clearRect(0,0,MW,MH);
+  particles=particles.filter(p=>p.t<=1);
+  particles.forEach(p=>{
+    p.t+=p.speed;
+    const t=Math.min(p.t,1);
+    const pos=p.curved?qBez(p.x,p.y,p.mx,p.my,p.tx,p.ty,t):{x:p.x+(p.tx-p.x)*t,y:p.y+(p.ty-p.y)*t};
+    const alpha=t<.1?t*10:t>.85?(1-t)/.15:1;
+    const r=Math.max(.5,p.r);
+    const g=pCtx.createRadialGradient(pos.x,pos.y,0,pos.x,pos.y,r*3.5);
+    g.addColorStop(0,p.color+'cc');g.addColorStop(1,'transparent');
+    pCtx.globalAlpha=alpha*.6;
+    pCtx.beginPath();pCtx.arc(pos.x,pos.y,Math.max(.5,r*3.5),0,Math.PI*2);
+    pCtx.fillStyle=g;pCtx.fill();
+    pCtx.globalAlpha=alpha;
+    pCtx.beginPath();pCtx.arc(pos.x,pos.y,r,0,Math.PI*2);
+    pCtx.fillStyle=p.chain?'#ff6b35':p.color;
+    pCtx.shadowBlur=10;pCtx.shadowColor=p.color;
+    pCtx.fill();pCtx.shadowBlur=0;
+  });
+  pCtx.globalAlpha=1;
+}
+
+// ── STARFIELD ──
+const sfC=document.getElementById('sfcanvas');
+const sfCtx=sfC.getContext('2d');
+function sfResize(){sfC.width=window.innerWidth;sfC.height=window.innerHeight;}
+sfResize();window.addEventListener('resize',sfResize);
+const stars=Array.from({length:240},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.5+.2,ph:Math.random()*Math.PI*2,sp:Math.random()*.008+.002}));
+let sfT=0;
+function drawSF(){
+  sfT+=.016;const sw=sfC.width,sh=sfC.height;
+  sfCtx.clearRect(0,0,sw,sh);
+  const bg=sfCtx.createRadialGradient(sw*.5,sh*.4,0,sw*.5,sh*.4,sw*.9);
+  bg.addColorStop(0,'#120830');bg.addColorStop(.55,'#080518');bg.addColorStop(1,'#03020e');
+  sfCtx.fillStyle=bg;sfCtx.fillRect(0,0,sw,sh);
+  [{x:.2,y:.3,c:'rgba(130,30,220,.09)'},{x:.78,y:.65,c:'rgba(20,110,220,.07)'},{x:.5,y:.5,c:'rgba(0,200,120,.04)'}]
+    .forEach(n=>{const g=sfCtx.createRadialGradient(n.x*sw,n.y*sh,0,n.x*sw,n.y*sh,sw*.38);g.addColorStop(0,n.c);g.addColorStop(1,'transparent');sfCtx.fillStyle=g;sfCtx.fillRect(0,0,sw,sh);});
+  stars.forEach(s=>{
+    const a=.1+.9*Math.abs(Math.sin(sfT*s.sp+s.ph));
+    sfCtx.globalAlpha=a;sfCtx.beginPath();sfCtx.arc(s.x*sw,s.y*sh,s.r,0,Math.PI*2);
+    sfCtx.fillStyle='#fff';sfCtx.fill();
+  });
+  sfCtx.globalAlpha=1;
+  requestAnimationFrame(drawSF);
+}
+requestAnimationFrame(drawSF);
+
+// ── LEGEND ──
+const legEl=document.getElementById('legend');
+CATS.forEach(c=>{
+  const item=document.createElement('div');item.className='li';
+  item.innerHTML=`<div class="ld" style="background:${c.bg}"></div>${c.label.replace('\n',' ')}`;
+  legEl.appendChild(item);
+});
+// Arrow legend
+['⬜ White = Center→Category','🟡 Yellow = Category→Tool','🟠 Orange = API Chain Flow'].forEach(t=>{
+  const item=document.createElement('div');item.className='li';
+  item.style.cssText='color:rgba(255,255,255,.4);font-size:9px;letter-spacing:.5px;';
+  item.textContent=t; legEl.appendChild(item);
+});
+
+// ── GEAR CANVAS: 4 Interconnected Gears in 2×2 Grid ──
+(function(){
+  const gc = document.getElementById('gearCanvas');
+  const gx = gc.getContext('2d');
+  const S  = 380;
+  const CX = S / 2, CY = S / 2;
+
+  // ── Layout ──────────────────────────────────────────────────────────────
+  // 2×2 grid.  Centre-to-centre = 2R → adjacent gears mesh perfectly.
+  // Adjacent gears counter-rotate; diagonals rotate same direction.
+  //
+  //   TL(gold) ── TR(blue)
+  //      |              |
+  //   BL(green) ── BR(purple)
+  //
+  const R = 76, T = 14;          // radius + tooth count (same for all 4)
+  const G = R * 2;               // centre-to-centre distance
+
+  const GEARS = [
+    // TL – Scalability – gold
+    { label:'Scalability',  emoji:'⚡',
+      cx: CX - R,  cy: CY - R,
+      col:'#f59e0b', dark:'#78350f', hi:'#fde68a',
+      angle: 0,            spd: +0.0055 },
+    // TR – Availability – blue
+    { label:'Availability', emoji:'🛡',
+      cx: CX + R,  cy: CY - R,
+      col:'#3b82f6', dark:'#1e3a8a', hi:'#93c5fd',
+      angle: Math.PI / T,  spd: -0.0055 },
+    // BL – Reliability – green
+    { label:'Reliability',  emoji:'🔒',
+      cx: CX - R,  cy: CY + R,
+      col:'#10b981', dark:'#064e3b', hi:'#6ee7b7',
+      angle: Math.PI / T,  spd: -0.0055 },
+    // BR – Performance – purple
+    { label:'Performance',  emoji:'🚀',
+      cx: CX + R,  cy: CY + R,
+      col:'#a855f7', dark:'#581c87', hi:'#d8b4fe',
+      angle: 0,            spd: +0.0055 },
+  ];
+
+
+  // Purple network nodes – radiate outward from each gear
+  const NODES = [];
+  GEARS.forEach((g, gi) => {
+    const outA = Math.atan2(g.cy - CY, g.cx - CX); // diagonal away from centre
+    [-0.55, -0.15, 0.15, 0.55].forEach((off, k) => {
+      const a   = outA + off;
+      const d   = R * 1.72;
+      NODES.push({ x: g.cx + Math.cos(a)*d, y: g.cy + Math.sin(a)*d,
+                   gi, ph: Math.random() * Math.PI * 2 });
+    });
+  });
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function rgba(hex, a){
+    const r=parseInt(hex.slice(1,3),16),
+          g=parseInt(hex.slice(3,5),16),
+          b=parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  function lighten(hex, amt){
+    return `rgb(${Math.min(255,parseInt(hex.slice(1,3),16)+amt)},`+
+           `${Math.min(255,parseInt(hex.slice(3,5),16)+amt)},`+
+           `${Math.min(255,parseInt(hex.slice(5,7),16)+amt)})`;
+  }
+
+  // ── Tooth path ──────────────────────────────────────────────────────────
+  function gearPath(cx, cy, r, teeth, angle){
+    const th = r * 0.19,
+          tw = (2*Math.PI / teeth) * 0.37,
+          ir = r - th;
+    gx.beginPath();
+    for(let i = 0; i < teeth; i++){
+      const a = angle + (i / teeth) * Math.PI * 2;
+      gx.lineTo(cx + ir*Math.cos(a - tw/2),    cy + ir*Math.sin(a - tw/2));
+      gx.lineTo(cx + r *Math.cos(a - tw*0.07), cy + r *Math.sin(a - tw*0.07));
+      gx.lineTo(cx + r *Math.cos(a + tw*0.07), cy + r *Math.sin(a + tw*0.07));
+      gx.lineTo(cx + ir*Math.cos(a + tw/2),    cy + ir*Math.sin(a + tw/2));
+    }
+    gx.closePath();
+  }
+
+  // ── Draw one gear ────────────────────────────────────────────────────────
+  function drawGear(g){
+    const { cx, cy, angle, col, dark, hi } = g;
+    const r = R, teeth = T;
+
+    // 1 · glow halo
+    const halo = gx.createRadialGradient(cx, cy, r*.45, cx, cy, r*1.55);
+    halo.addColorStop(0, rgba(col, .30)); halo.addColorStop(1,'transparent');
+    gx.beginPath(); gx.arc(cx, cy, r*1.55, 0, Math.PI*2);
+    gx.fillStyle = halo; gx.fill();
+
+    // 2 · body with 3-D radial gradient
+    gearPath(cx, cy, r, teeth, angle);
+    const body = gx.createRadialGradient(
+      cx - r*.30, cy - r*.34, r*.03,
+      cx + r*.14, cy + r*.16, r*1.04);
+    body.addColorStop(0,   lighten(col, 110));
+    body.addColorStop(0.25, lighten(col, 42));
+    body.addColorStop(0.65, col);
+    body.addColorStop(1,   dark);
+    gx.fillStyle = body; gx.fill();
+
+    // 3 · rim highlight
+    gearPath(cx, cy, r, teeth, angle);
+    gx.strokeStyle = rgba(hi, .70); gx.lineWidth = 1.6; gx.stroke();
+
+    // 4 · top-left shine (clipped)
+    gx.save(); gearPath(cx, cy, r, teeth, angle); gx.clip();
+    const sh = gx.createRadialGradient(
+      cx - r*.30, cy - r*.36, 0, cx - r*.30, cy - r*.36, r*.78);
+    sh.addColorStop(0, 'rgba(255,255,255,.48)');
+    sh.addColorStop(.45,'rgba(255,255,255,.10)');
+    sh.addColorStop(1,  'transparent');
+    gx.fillStyle = sh; gx.fillRect(cx-r, cy-r, r*2, r*2); gx.restore();
+
+    // 5 · bottom-right depth shadow (clipped)
+    gx.save(); gearPath(cx, cy, r, teeth, angle); gx.clip();
+    const shd = gx.createRadialGradient(
+      cx + r*.30, cy + r*.33, 0, cx + r*.30, cy + r*.33, r*.90);
+    shd.addColorStop(0,'rgba(0,0,0,.32)'); shd.addColorStop(1,'transparent');
+    gx.fillStyle = shd; gx.fillRect(cx-r, cy-r, r*2, r*2); gx.restore();
+
+    // 6 · dark recess ring
+    gx.beginPath(); gx.arc(cx, cy, r*.50, 0, Math.PI*2);
+    const rc = gx.createRadialGradient(cx, cy, 0, cx, cy, r*.50);
+    rc.addColorStop(0, '#06061a'); rc.addColorStop(1, rgba(dark,.96));
+    gx.fillStyle = rc; gx.fill();
+    gx.strokeStyle = rgba(hi,.55); gx.lineWidth = 2; gx.stroke();
+
+    // 7 · spokes
+    for(let i = 0; i < 6; i++){
+      const sa = angle + (i/6)*Math.PI*2;
+      const sg = gx.createLinearGradient(
+        cx + r*.50*Math.cos(sa), cy + r*.50*Math.sin(sa),
+        cx + r*.24*Math.cos(sa), cy + r*.24*Math.sin(sa));
+      sg.addColorStop(0, rgba(hi, .75)); sg.addColorStop(1, rgba(col,.18));
+      gx.beginPath();
+      gx.moveTo(cx + r*.50*Math.cos(sa), cy + r*.50*Math.sin(sa));
+      gx.lineTo(cx + r*.25*Math.cos(sa), cy + r*.25*Math.sin(sa));
+      gx.strokeStyle = sg; gx.lineWidth = 2.4; gx.stroke();
+    }
+
+    // 8 · inner hub (enlarged)
+    gx.beginPath(); gx.arc(cx, cy, r*.44, 0, Math.PI*2);
+    const hub = gx.createRadialGradient(cx-r*.10, cy-r*.10, 0, cx, cy, r*.44);
+    hub.addColorStop(0,'rgba(255,255,255,.22)'); hub.addColorStop(1, rgba(dark,.94));
+    gx.fillStyle = hub; gx.fill();
+    gx.strokeStyle = rgba(hi,.65); gx.lineWidth = 1.6; gx.stroke();
+
+    // 9 · bolt holes
+    for(let i = 0; i < 8; i++){
+      const ba = angle + (i/8)*Math.PI*2;
+      gx.beginPath();
+      gx.arc(cx + r*.48*Math.cos(ba), cy + r*.48*Math.sin(ba), 2.6, 0, Math.PI*2);
+      gx.fillStyle = rgba(dark,.92); gx.fill();
+      gx.strokeStyle = rgba(hi,.42); gx.lineWidth = .8; gx.stroke();
+    }
+
+    // 10 · label inside hub — emoji + single-line name
+    gx.save();
+    gx.textAlign = 'center'; gx.textBaseline = 'middle';
+    // emoji
+    gx.font = '14px serif';
+    gx.fillText(g.emoji, cx, cy - 11);
+    // single-line label in normal Nunito
+    gx.font = "700 10px 'Nunito',sans-serif";
+    gx.fillStyle = '#ffffff';
+    gx.shadowBlur = 6; gx.shadowColor = g.col;
+    gx.fillText(g.label, cx, cy + 7);
+    gx.shadowBlur = 0;
+    gx.restore();
+  }
+
+  // ── Mesh sparkle dots ────────────────────────────────────────────────────
+  //  adjacent pairs: TL–TR, TL–BL, TR–BR, BL–BR
+  const MESH_PAIRS = [[0,1],[0,2],[1,3],[2,3]];
+  function drawMeshSparks(t){
+    MESH_PAIRS.forEach(([i,j], pi) => {
+      const a = GEARS[i], b = GEARS[j];
+      const dx = b.cx - a.cx, dy = b.cy - a.cy;
+      const d  = Math.sqrt(dx*dx + dy*dy);
+      const mx = a.cx + (dx/d)*R, my = a.cy + (dy/d)*R;
+      const pulse = .45 + .55*Math.abs(Math.sin(t*.09 + pi*1.2));
+
+      // outer glow
+      gx.globalAlpha = pulse;
+      const ng = gx.createRadialGradient(mx, my, 0, mx, my, 11);
+      ng.addColorStop(0,'rgba(255,140,255,1)');
+      ng.addColorStop(.4,'rgba(190,50,255,.6)');
+      ng.addColorStop(1,'transparent');
+      gx.beginPath(); gx.arc(mx, my, 11, 0, Math.PI*2);
+      gx.fillStyle = ng; gx.fill();
+
+      // bright core
+      gx.beginPath(); gx.arc(mx, my, 4.5, 0, Math.PI*2);
+      gx.fillStyle = '#ffffff';
+      gx.shadowBlur = 14; gx.shadowColor = '#ff88ff';
+      gx.fill(); gx.shadowBlur = 0; gx.globalAlpha = 1;
+    });
+  }
+
+  // ── Purple network web ───────────────────────────────────────────────────
+  function drawNetwork(t){
+    // node ↔ node lines
+    for(let i = 0; i < NODES.length; i++){
+      for(let j = i+1; j < NODES.length; j++){
+        const a = NODES[i], b = NODES[j];
+        const dx=b.x-a.x, dy=b.y-a.y, d=Math.sqrt(dx*dx+dy*dy);
+        if(d < 150){
+          gx.beginPath(); gx.moveTo(a.x,a.y); gx.lineTo(b.x,b.y);
+          gx.strokeStyle = `rgba(180,90,255,${0.28*(1-d/150)})`;
+          gx.lineWidth = .9; gx.stroke();
+        }
+      }
+      // spoke to gear rim
+      const g  = GEARS[NODES[i].gi];
+      const dx = NODES[i].x - g.cx, dy = NODES[i].y - g.cy;
+      const d  = Math.sqrt(dx*dx + dy*dy);
+      const ex = g.cx + (dx/d)*R, ey = g.cy + (dy/d)*R;
+      gx.beginPath(); gx.moveTo(ex,ey); gx.lineTo(NODES[i].x, NODES[i].y);
+      gx.strokeStyle = 'rgba(160,75,255,.30)'; gx.lineWidth = .9; gx.stroke();
+    }
+    // orbs
+    NODES.forEach(n => {
+      const pulse = .5 + .5*Math.abs(Math.sin(t*.038 + n.ph));
+      const ng = gx.createRadialGradient(n.x,n.y,0,n.x,n.y,8);
+      ng.addColorStop(0,'rgba(195,80,255,.94)');
+      ng.addColorStop(.5,'rgba(150,50,235,.46)');
+      ng.addColorStop(1,'transparent');
+      gx.globalAlpha = pulse;
+      gx.beginPath(); gx.arc(n.x,n.y,8,0,Math.PI*2); gx.fillStyle=ng; gx.fill();
+      gx.beginPath(); gx.arc(n.x,n.y,3.2,0,Math.PI*2);
+      gx.fillStyle='#c084fc'; gx.shadowBlur=8; gx.shadowColor='#a855f7';
+      gx.fill(); gx.shadowBlur=0; gx.globalAlpha=1;
+    });
+  }
+
+  // ── Animation loop ────────────────────────────────────────────────────────
+  let t = 0;
+  function animGears(){
+    t++;
+    gx.clearRect(0, 0, S, S);
+    GEARS[0].angle += GEARS[0].spd;
+    GEARS[1].angle += GEARS[1].spd;
+    GEARS[2].angle += GEARS[2].spd;
+    GEARS[3].angle += GEARS[3].spd;
+
+    drawNetwork(t);
+    GEARS.forEach(g => drawGear(g));
+    drawMeshSparks(t);
+    requestAnimationFrame(animGears);
+  }
+  animGears();
+})();
+
+
+
+
+// ── CSS ──
+const style=document.createElement('style');
+style.textContent=`@keyframes dashFlow{to{stroke-dashoffset:-22;}}`;
+document.head.appendChild(style);
+
+// ── BOOT ──
+let frame=0;
+function loop(){frame++;if(frame%5===0)spawnParticles();animParticles();requestAnimationFrame(loop);}
+
+setTimeout(()=>{
+  resolveCollisions();
+  requestAnimationFrame(()=>{buildLines();loop();});
+},150);
+</script>
+</body>
+</html>
